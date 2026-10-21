@@ -295,7 +295,8 @@ public final class GameEngine {
         return List.of(journal.record(new TransferEvent(defender, cards, newDefender)));
     }
 
-    private List<GameEvent> applyTake(Player defender) {        List<Card> taken = state.table().allCards();
+    private List<GameEvent> applyTake(Player defender) {
+        List<Card> taken = state.table().allCards();
         defender.hand().addAll(taken);
         state.table().clear();
         state.clearTransferOffer();
@@ -334,8 +335,8 @@ public final class GameEngine {
         }
 
         Player nextAttacker = state.nextPlayer(state.defender());
-        events.addAll(refill(nextAttacker));
         updateProgressCounters(discardedCount);
+        events.addAll(refill(nextAttacker));
 
         Optional<GameResult> stalemate = checkStalemate();
         if (stalemate.isPresent()) {
@@ -356,9 +357,11 @@ public final class GameEngine {
      * <p>Продвижением считается раунд, в котором:</p>
      * <ul>
      *     <li>в отбой ушла хотя бы одна карта;</li>
-     *     <li>кто-то добрал карты из колоды;</li>
      *     <li>у кого-то стало меньше карт, то есть игрок приблизился к победе.</li>
      * </ul>
+     *
+     * <p>Счётчики обновляются до добора карт из колоды: добор лишь восстанавливает
+     * руку до минимального размера и сам по себе продвижением не является.</p>
      *
      * @param discardedCount количество карт, ушедших в отбой за раунд
      */
