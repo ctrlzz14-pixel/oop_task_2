@@ -56,14 +56,6 @@ public final class GameEngine {
     private final GameJournal journal = new GameJournal();
 
     /**
-     * Минимальное число карт, которое было у игроков в предыдущем раунде.
-     *
-     * <p>Значение используется для отслеживания продвижения партии: если у
-     * кого-то стало меньше карт, игрок приблизился к победе.</p>
-     */
-    private int previousMinHandCount;
-
-    /**
      * Создаёт движок для подготовленного состояния партии.
      *
      * <p>Используется в тестах, где состояние собирается вручную из
@@ -77,7 +69,6 @@ public final class GameEngine {
         this.state = Objects.requireNonNull(state, "Состояние партии не должно быть null");
         this.random = Objects.requireNonNull(random, "Генератор случайных величин не должен быть null");
         this.validator = new MoveValidator(state);
-        this.previousMinHandCount = minHandCount();
     }
 
     /**
@@ -125,7 +116,6 @@ public final class GameEngine {
                 .build();
 
         GameEngine engine = new GameEngine(state, random);
-        engine.previousMinHandCount = engine.minHandCount();
         engine.journal.record(new GameStartedEvent(seed, rules, playerNames));
         engine.journal.record(new TrumpChosenEvent(trumpSuit, rules.trumpMode(),
                 rules.trumpMode() == TrumpMode.OPEN ? trumpCard : null));
@@ -335,8 +325,9 @@ public final class GameEngine {
         }
 
         Player nextAttacker = state.nextPlayer(state.defender());
-        updateProgressCounters(discardedCount);
-        events.addAll(refill(nextAttacker));
+        List<GameEvent> refillEvents = refill(nextAttacker);
+        events.addAll(refillEvents);
+        updateProgress(discardedCount, !refillEvents.isEmpty());
 
         Optional<GameResult> stalemate = checkStalemate();
         if (stalemate.isPresent()) {
@@ -352,31 +343,53 @@ public final class GameEngine {
     }
 
     /**
-     * Обновляет счётчики продвижения партии.
+     * Учитывает результат раунда: был ли он продвижением партии.
      *
      * <p>Продвижением считается раунд, в котором:</p>
      * <ul>
      *     <li>в отбой ушла хотя бы одна карта;</li>
-     *     <li>у кого-то стало меньше карт, то есть игрок приблизился к победе.</li>
+     *     <li>кто-то добрал карты из колоды.</li>
      * </ul>
      *
-     * <p>Счётчики обновляются до добора карт из колоды: добор лишь восстанавливает
-     * руку до минимального размера и сам по себе продвижением не является.</p>
+     * <p>Если ни то, ни другое не произошло, карты лишь перешли из руки в
+     * руку: такая партия топчется на месте, и через несколько таких раундов
+     * подряд движок объявляет тупик.</p>
      *
      * @param discardedCount количество карт, ушедших в отбой за раунд
+     * @param refilled был ли добор карт из колоды
      */
-    private void updateProgressCounters(int discardedCount) {
-        if (discardedCount > 0) {
-            state.resetRoundsWithoutDiscard();
-        } else {
-            state.incrementRoundsWithoutDiscard();
-        }
-        if (minHandCount() < previousMinHandCount) {
-            previousMinHandCount = minHandCount();
+    private void updateProgress(int discardedCount, boolean refilled) {
+        if (discardedCount > 0 || refilled) {
             state.resetRoundsWithoutProgress();
         } else {
             state.incrementRoundsWithoutProgress();
         }
+    }
+
+    /**
+     * Проверяет, не завела ли партия в тупик.
+     *
+     * <p>Тупик наступает, когда несколько раундов подряд не было продвижения:
+     * карты не уходили в отбой и никто не добрал их из колоды, то есть они
+     * лишь переходили из руки в руку. Партия дальше не может двигаться,
+     * поэтому она завершается ничьей: побеждают игроки с наименьшим числом
+     * карт.</p>
+     *
+     * @return результат партии, если наступил тупик
+     */
+    private Optional<GameResult> checkStalemate() {
+        if (state.roundsWithoutProgress() < state.rules().stalemateLimit()) {
+            return Optional.empty();
+        }
+        int minCards = minHandCount();
+        List<Player> winners = state.players().stream()
+                .filter(player -> player.cardCount() == minCards)
+                .toList();
+        List<Player> losers = state.players().stream()
+                .filter(player -> player.cardCount() != minCards)
+                .sorted(Comparator.comparingInt(Player::cardCount).reversed())
+                .toList();
+        return Optional.of(new GameResult(winners, losers, EndReason.STALEMATE));
     }
 
     /**
@@ -422,32 +435,6 @@ public final class GameEngine {
                 .sorted(Comparator.comparingInt(Player::cardCount).reversed())
                 .toList();
         return Optional.of(new GameResult(finished, losers, EndReason.PLAYER_FINISHED));
-    }
-
-    /**
-     * Проверяет, не завела ли партия в тупик.
-     *
-     * <p>Тупик наступает, когда партия несколько раундов подряд не
-     * продвигается: в отбой ничего не уходит и ни у кого не становится меньше
-     * карт. В такой ситуации партия дальше не может двигаться, поэтому она
-     * завершается ничьей: побеждают игроки с наименьшим числом карт.</p>
-     *
-     * @return результат партии, если наступил тупик
-     */
-    private Optional<GameResult> checkStalemate() {
-        int limit = state.rules().stalemateLimit();
-        if (state.roundsWithoutDiscard() < limit || state.roundsWithoutProgress() < limit) {
-            return Optional.empty();
-        }
-        int minCards = minHandCount();
-        List<Player> winners = state.players().stream()
-                .filter(player -> player.cardCount() == minCards)
-                .toList();
-        List<Player> losers = state.players().stream()
-                .filter(player -> player.cardCount() != minCards)
-                .sorted(Comparator.comparingInt(Player::cardCount).reversed())
-                .toList();
-        return Optional.of(new GameResult(winners, losers, EndReason.STALEMATE));
     }
 
     /**

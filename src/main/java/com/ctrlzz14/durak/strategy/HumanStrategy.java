@@ -76,7 +76,8 @@ public final class HumanStrategy implements PlayerStrategy {
                 io.println("Некорректная команда: " + answer);
                 continue;
             }
-            List<Card> cards = readCards(state.defender(), legal);
+            String numbers = ask("Номера карт для перевода: ");
+            List<Card> cards = readCards(state.defender(), legal, numbers);
             if (cards.isEmpty()) {
                 return Optional.empty();
             }
@@ -102,7 +103,7 @@ public final class HumanStrategy implements PlayerStrategy {
             if (answer.startsWith(COMMAND_END)) {
                 return Move.endAttack(attacker);
             }
-            List<Card> cards = readCards(attacker, legal);
+            List<Card> cards = readCards(attacker, legal, answer);
             if (cards.isEmpty()) {
                 continue;
             }
@@ -123,7 +124,7 @@ public final class HumanStrategy implements PlayerStrategy {
             if (answer.startsWith(COMMAND_TAKE)) {
                 return Move.take(defender);
             }
-            List<Card> cards = readCards(defender, legal);
+            List<Card> cards = readCards(defender, legal, answer);
             if (cards.isEmpty()) {
                 continue;
             }
@@ -134,10 +135,18 @@ public final class HumanStrategy implements PlayerStrategy {
         }
     }
 
-    private List<Card> readCards(Player player, List<Card> legal) {
+    /**
+     * Разбирает ответ игрока: номера карт в его руке.
+     *
+     * @param player игрок, чьи карты выбираются
+     * @param legal карты, которые разрешено сыграть сейчас
+     * @param answer строка ответа игрока
+     * @return выбранные карты; пустой список, если ответ не разобран
+     */
+    private List<Card> readCards(Player player, List<Card> legal, String answer) {
         List<Card> hand = player.hand().sorted();
         List<Card> chosen = new ArrayList<>();
-        for (String token : readLine().split("\\s+")) {
+        for (String token : answer.split("\\s+")) {
             int index;
             try {
                 index = Integer.parseInt(token);

@@ -161,7 +161,9 @@ public final class MoveValidator {
      *       отбитой карты; при открытом козыре переводить можно также любой
      *       козырной картой;</li>
      *   <li>число карт перевода не должно превышать число карт следующего
-     *       по кругу игрока, который обязан отбить перевод.</li>
+     *       по кругу игрока, который обязан отбить перевод;</li>
+     *   <li>перевод возможен только в партии на троих и более игроков: в
+     *       партии на двоих следующим по кругу был бы сам защищающийся.</li>
      * </ul>
      *
      * @param defender защищающийся, выполняющий перевод
@@ -171,6 +173,9 @@ public final class MoveValidator {
     public void validateTransfer(Player defender, List<Card> cards) {
         requirePhase(GamePhase.ATTACK, "перевод атаки");
         requireDefender(defender);
+        if (state.players().size() < 3) {
+            throw new IllegalMoveException("Перевод возможен только в партии на троих и более игроков");
+        }
         if (cards.isEmpty()) {
             throw new IllegalMoveException("Перевод должен содержать хотя бы одну карту");
         }
@@ -257,6 +262,9 @@ public final class MoveValidator {
      */
     public List<Card> legalTransferCards(Player defender) {
         if (state.phase() != GamePhase.ATTACK || state.defender() != defender || !state.isTransferAvailable()) {
+            return List.of();
+        }
+        if (state.players().size() < 3) {
             return List.of();
         }
         Card baseCard = state.transferBaseCard().orElse(null);

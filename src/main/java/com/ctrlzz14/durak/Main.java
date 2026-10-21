@@ -3,6 +3,7 @@ package com.ctrlzz14.durak;
 import com.ctrlzz14.durak.bot.SimpleBotStrategy;
 import com.ctrlzz14.durak.cli.ConsoleGame;
 import com.ctrlzz14.durak.cli.ConsoleIO;
+import com.ctrlzz14.durak.cli.ConsoleInput;
 import com.ctrlzz14.durak.cli.GameOptions;
 import com.ctrlzz14.durak.engine.GameEngine;
 import com.ctrlzz14.durak.model.GameRules;
@@ -11,7 +12,6 @@ import com.ctrlzz14.durak.strategy.HumanStrategy;
 import com.ctrlzz14.durak.strategy.PlayerStrategy;
 
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -36,17 +36,21 @@ public final class Main {
      * @param args аргументы командной строки
      */
     public static void main(String[] args) {
+        PrintStream out = new PrintStream(System.out, true, StandardCharsets.UTF_8);
+        PrintStream err = new PrintStream(System.err, true, StandardCharsets.UTF_8);
+
+        if (args.length > 0 && (args[0].equals("--help") || args[0].equals("-h"))) {
+            out.println(GameOptions.usage(GameOptions.parse(new String[0])));
+            return;
+        }
+
         GameOptions options;
         try {
             options = GameOptions.parse(args);
         } catch (IllegalArgumentException e) {
-            System.err.println("Ошибка разбора параметров: " + e.getMessage());
-            System.err.println(GameOptions.usage(GameOptions.parse(new String[0])));
+            err.println("Ошибка разбора параметров: " + e.getMessage());
+            err.println(GameOptions.usage(GameOptions.parse(new String[0])));
             System.exit(1);
-            return;
-        }
-        if (args.length > 0 && (args[0].equals("--help") || args[0].equals("-h"))) {
-            System.out.println(GameOptions.usage(options));
             return;
         }
 
@@ -56,9 +60,7 @@ public final class Main {
         List<String> names = options.playerNames();
         GameEngine engine = GameEngine.start(rules, names, options.seed());
 
-        ConsoleIO io = new ConsoleIO(
-                new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)),
-                new PrintStream(System.out, true, StandardCharsets.UTF_8));
+        ConsoleIO io = new ConsoleIO(new BufferedReader(ConsoleInput.system()), out);
 
         Map<Player, PlayerStrategy> strategies = new LinkedHashMap<>();
         List<Player> players = engine.state().players();
