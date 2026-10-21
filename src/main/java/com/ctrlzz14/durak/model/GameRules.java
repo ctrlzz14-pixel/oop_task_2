@@ -12,11 +12,13 @@ public final class GameRules {
     private final TrumpMode trumpMode;
     private final int initialHandSize;
     private final int minHandSize;
+    private final int stalemateLimit;
 
     private GameRules(Builder builder) {
         this.trumpMode = builder.trumpMode;
         this.initialHandSize = builder.initialHandSize;
         this.minHandSize = builder.minHandSize;
+        this.stalemateLimit = builder.stalemateLimit;
     }
 
     /**
@@ -66,6 +68,21 @@ public final class GameRules {
     }
 
     /**
+     * Возвращает максимальное количество раундов подряд без продвижения,
+     * после которого партия признаётся заведённой в тупик.
+     *
+     * <p>Раунд считается продвижением, если в отбой ушла хотя бы одна карта
+     * или у кого-то из игроков стало меньше карт. Если ни одно из условий не
+     * выполнено несколько раундов подряд, партия дальше не может
+     * продвинуться и завершается ничьей.</p>
+     *
+     * @return максимальное число раундов без продвижения
+     */
+    public int stalemateLimit() {
+        return stalemateLimit;
+    }
+
+    /**
      * Построитель настроек партии.
      */
     public static final class Builder {
@@ -73,6 +90,7 @@ public final class GameRules {
         private TrumpMode trumpMode = TrumpMode.OPEN;
         private int initialHandSize = 6;
         private int minHandSize = 6;
+        private int stalemateLimit = 3;
 
         private Builder() {
             // построитель создаётся только через GameRules.builder()
@@ -116,6 +134,22 @@ public final class GameRules {
                 throw new IllegalArgumentException("Минимальный размер руки не может быть отрицательным");
             }
             this.minHandSize = minHandSize;
+            return this;
+        }
+
+        /**
+         * Задаёт максимальное количество раундов подряд без продвижения,
+         * после которого партия признаётся заведённой в тупик.
+         *
+         * @param stalemateLimit количество раундов без продвижения
+         * @return этот построитель
+         * @throws IllegalArgumentException если значение меньше единицы
+         */
+        public Builder stalemateLimit(int stalemateLimit) {
+            if (stalemateLimit < 1) {
+                throw new IllegalArgumentException("Предел раундов без продвижения должен быть не меньше единицы");
+            }
+            this.stalemateLimit = stalemateLimit;
             return this;
         }
 

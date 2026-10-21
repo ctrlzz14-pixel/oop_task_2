@@ -34,6 +34,8 @@ public final class GameState {
     private int cardsThrownInSegment;
     private int segmentLimit;
     private int roundNumber;
+    private int roundsWithoutDiscard;
+    private int roundsWithoutProgress;
     private GameResult result;
     private Card transferBaseCard;
 
@@ -52,6 +54,8 @@ public final class GameState {
         this.cardsThrownInSegment = builder.cardsThrownInSegment;
         this.segmentLimit = builder.segmentLimit;
         this.roundNumber = builder.roundNumber;
+        this.roundsWithoutDiscard = builder.roundsWithoutDiscard;
+        this.roundsWithoutProgress = builder.roundsWithoutProgress;
         this.result = builder.result;
         this.transferBaseCard = builder.transferBaseCard;
     }
@@ -335,6 +339,54 @@ public final class GameState {
     }
 
     /**
+     * Возвращает количество последних раундов подряд, в которых не было
+     * продвижения.
+     *
+     * @return число раундов без продвижения
+     */
+    public int roundsWithoutProgress() {
+        return roundsWithoutProgress;
+    }
+
+    /**
+     * Сбрасывает счётчик раундов без продвижения.
+     */
+    public void resetRoundsWithoutProgress() {
+        this.roundsWithoutProgress = 0;
+    }
+
+    /**
+     * Увеличивает счётчик раундов без продвижения.
+     */
+    public void incrementRoundsWithoutProgress() {
+        this.roundsWithoutProgress++;
+    }
+
+    /**
+     * Возвращает количество последних раундов подряд, в которых ни одна
+     * карта не ушла в отбой.
+     *
+     * @return число раундов без отбоя
+     */
+    public int roundsWithoutDiscard() {
+        return roundsWithoutDiscard;
+    }
+
+    /**
+     * Сбрасывает счётчик раундов без отбоя.
+     */
+    public void resetRoundsWithoutDiscard() {
+        this.roundsWithoutDiscard = 0;
+    }
+
+    /**
+     * Увеличивает счётчик раундов без отбоя.
+     */
+    public void incrementRoundsWithoutDiscard() {
+        this.roundsWithoutDiscard++;
+    }
+
+    /**
      * Открывает возможность перевода атаки.
      *
      * @param baseCard карта, от которой защищались
@@ -381,6 +433,8 @@ public final class GameState {
         private int cardsThrownInSegment;
         private int segmentLimit;
         private int roundNumber = 1;
+        private int roundsWithoutDiscard;
+        private int roundsWithoutProgress;
         private GameResult result;
         private Card transferBaseCard;
 
@@ -512,6 +566,28 @@ public final class GameState {
          */
         public Builder roundNumber(int roundNumber) {
             this.roundNumber = roundNumber;
+            return this;
+        }
+
+        /**
+         * Задаёт счётчик раундов без продвижения.
+         *
+         * @param roundsWithoutProgress число раундов без продвижения
+         * @return этот построитель
+         */
+        public Builder roundsWithoutProgress(int roundsWithoutProgress) {
+            this.roundsWithoutProgress = roundsWithoutProgress;
+            return this;
+        }
+
+        /**
+         * Задаёт счётчик раундов без отбоя.
+         *
+         * @param roundsWithoutDiscard число раундов без отбоя
+         * @return этот построитель
+         */
+        public Builder roundsWithoutDiscard(int roundsWithoutDiscard) {
+            this.roundsWithoutDiscard = roundsWithoutDiscard;
             return this;
         }
 

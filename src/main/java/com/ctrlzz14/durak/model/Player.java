@@ -77,6 +77,15 @@ public final class Player {
     }
 
     /**
+     * Добавляет карту в руку игрока.
+     *
+     * @param card добавляемая карта
+     */
+    public void addCard(Card card) {
+        hand.add(card);
+    }
+
+    /**
      * Проверяет, остались ли у игрока карты.
      *
      * @return {@code true}, если рука не пуста
