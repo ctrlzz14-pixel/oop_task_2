@@ -17,6 +17,12 @@ import java.util.Locale;
  *   <li>{@code --seed=123} — зерно генератора случайных величин;</li>
  *   <li>{@code --names=Аня,Борис} — имена игроков через запятую.</li>
  * </ul>
+ *
+ * @param playerCount количество игроков за столом
+ * @param humanCount количество игроков-людей
+ * @param trumpMode режим козыря
+ * @param seed зерно генератора случайных величин
+ * @param names имена игроков, заданные пользователем
  */
 public record GameOptions(int playerCount, int humanCount, TrumpMode trumpMode, long seed, List<String> names) {
 

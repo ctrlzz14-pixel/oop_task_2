@@ -22,6 +22,12 @@ public final class GameJournal {
     private long sequence;
 
     /**
+     * Создаёт пустой журнал событий.
+     */
+    public GameJournal() {
+    }
+
+    /**
      * Записывает событие в журнал и присваивает ему порядковый номер.
      *
      * @param event событие для записи

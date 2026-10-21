@@ -26,6 +26,12 @@ import java.util.stream.Collectors;
 public final class EventFormatter {
 
     /**
+     * Создаёт форматтер событий партии.
+     */
+    public EventFormatter() {
+    }
+
+    /**
      * Преобразует событие в строку для вывода в консоль.
      *
      * @param event событие партии
