@@ -11,6 +11,7 @@ import com.ctrlzz14.durak.event.RefillEvent;
 import com.ctrlzz14.durak.event.RoundEndReason;
 import com.ctrlzz14.durak.event.RoundEndedEvent;
 import com.ctrlzz14.durak.event.TakeEvent;
+import com.ctrlzz14.durak.event.TransferEvent;
 import com.ctrlzz14.durak.event.TrumpChosenEvent;
 import com.ctrlzz14.durak.model.Card;
 import com.ctrlzz14.durak.model.Deck;
@@ -146,7 +147,7 @@ public final class GameEngine {
             case DEFEND -> applyDefend(move.player(), move.cards().get(0));
             case TAKE -> applyTake(move.player());
             case END_ATTACK -> applyEndAttack(move.player());
-            case TRANSFER -> throw new IllegalMoveException("Перевод атаки в текущей версии не поддерживается");
+            case TRANSFER -> applyTransfer(move.player(), move.cards());
         };
     }
 
@@ -181,6 +182,22 @@ public final class GameEngine {
      */
     public List<GameEvent> defend(Player defender, Card card) {
         return apply(Move.defend(defender, card));
+    }
+
+    /**
+     * Выполняет перевод атаки.
+     *
+     * <p>Защищающийся, только что отбившийся картой, кладёт на стол карты
+     * перевода. Они становятся новой атакой, а отбиваться от них обязан
+     * следующий игрок по кругу. Роли меняются: переводивший становится
+     * атакующим, следующий игрок — защищающимся.</p>
+     *
+     * @param defender защищающийся, выполняющий перевод
+     * @param cards карты перевода
+     * @return список событий
+     */
+    public List<GameEvent> transfer(Player defender, List<Card> cards) {
+        return apply(Move.transfer(defender, cards));
     }
 
     /**
@@ -264,8 +281,21 @@ public final class GameEngine {
         return List.of(journal.record(new DefendEvent(defender, attacked, card)));
     }
 
-    private List<GameEvent> applyTake(Player defender) {
-        List<Card> taken = state.table().allCards();
+    private List<GameEvent> applyTransfer(Player defender, List<Card> cards) {
+        for (Card card : cards) {
+            defender.hand().remove(card);
+            state.table().addAttack(card);
+        }
+        Player newDefender = state.nextPlayer(defender);
+        state.setRoles(defender, newDefender);
+        state.resetSegment(newDefender.cardCount());
+        state.addCardsThrown(cards.size());
+        state.clearTransferOffer();
+        state.setPhase(GamePhase.DEFENSE);
+        return List.of(journal.record(new TransferEvent(defender, cards, newDefender)));
+    }
+
+    private List<GameEvent> applyTake(Player defender) {        List<Card> taken = state.table().allCards();
         defender.hand().addAll(taken);
         state.table().clear();
         state.clearTransferOffer();

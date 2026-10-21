@@ -5,8 +5,8 @@ import com.ctrlzz14.durak.model.GamePhase;
 import com.ctrlzz14.durak.model.GameState;
 import com.ctrlzz14.durak.model.Player;
 import com.ctrlzz14.durak.model.Rank;
+import com.ctrlzz14.durak.model.TrumpMode;
 import com.ctrlzz14.durak.move.Move;
-import com.ctrlzz14.durak.move.MoveType;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -151,15 +151,63 @@ public final class MoveValidator {
     /**
      * Проверяет допустимость перевода атаки.
      *
-     * <p>Перевод реализуется в отдельном этапе разработки; до его появления
-     * любой ход типа {@link MoveType#TRANSFER} отклоняется.</p>
+     * <p>Требования к переводу:</p>
+     * <ul>
+     *   <li>переводить может только защищающийся, сразу после того как он
+     *       отбился картой (в этот момент партия находится в фазе атаки,
+     *       но ходить должен защищающийся);</li>
+     *   <li>карты перевода должны лежать в руке защищающегося;</li>
+     *   <li>достоинство карты перевода должно совпадать с достоинством
+     *       отбитой карты; при открытом козыре переводить можно также любой
+     *       козырной картой;</li>
+     *   <li>число карт перевода не должно превышать число карт следующего
+     *       по кругу игрока, который обязан отбить перевод.</li>
+     * </ul>
      *
-     * @param defender защищающийся
+     * @param defender защищающийся, выполняющий перевод
      * @param cards карты перевода
-     * @throws IllegalMoveException всегда — перевод ещё не реализован
+     * @throws IllegalMoveException если перевод недопустим
      */
     public void validateTransfer(Player defender, List<Card> cards) {
-        throw new IllegalMoveException("Перевод атаки в текущей версии не поддерживается");
+        requirePhase(GamePhase.ATTACK, "перевод атаки");
+        requireDefender(defender);
+        if (cards.isEmpty()) {
+            throw new IllegalMoveException("Перевод должен содержать хотя бы одну карту");
+        }
+        if (!state.isTransferAvailable()) {
+            throw new IllegalMoveException("Переводить можно только сразу после того, как защищающийся отбился картой");
+        }
+        for (Card card : cards) {
+            if (!defender.hand().contains(card)) {
+                throw new IllegalMoveException("У игрока " + defender.name() + " нет карты " + card);
+            }
+        }
+        Card baseCard = state.transferBaseCard()
+                .orElseThrow(() -> new IllegalMoveException("Переводить нечего: атака ещё не отбита"));
+        for (Card card : cards) {
+            if (!isValidTransferCard(baseCard, card)) {
+                throw new IllegalMoveException("Карта " + card + " не подходит для перевода карты " + baseCard);
+            }
+        }
+        Player newDefender = state.nextPlayer(defender);
+        if (newDefender.cardCount() < cards.size()) {
+            throw new IllegalMoveException("У игрока " + newDefender.name() + " всего " + newDefender.cardCount()
+                    + " карт, перевести больше нельзя");
+        }
+    }
+
+    /**
+     * Проверяет, подходит ли карта для перевода отбитой карты.
+     *
+     * @param baseCard отбитая карта
+     * @param card карта перевода
+     * @return {@code true}, если картой можно перевести
+     */
+    private boolean isValidTransferCard(Card baseCard, Card card) {
+        if (card.rank() == baseCard.rank()) {
+            return true;
+        }
+        return state.rules().trumpMode() == TrumpMode.OPEN && card.isTrump(state.trumpSuit());
     }
 
     /**
@@ -197,6 +245,26 @@ public final class MoveValidator {
         }
         return defender.hand().cards().stream()
                 .filter(card -> CardRules.beats(attacked, card, state.trumpSuit()))
+                .toList();
+    }
+
+    /**
+     * Возвращает карты, которыми защищающийся может перевести атаку прямо
+     * сейчас.
+     *
+     * @param defender защищающийся
+     * @return список допустимых карт перевода (может быть пустым)
+     */
+    public List<Card> legalTransferCards(Player defender) {
+        if (state.phase() != GamePhase.ATTACK || state.defender() != defender || !state.isTransferAvailable()) {
+            return List.of();
+        }
+        Card baseCard = state.transferBaseCard().orElse(null);
+        if (baseCard == null || state.nextPlayer(defender).cardCount() == 0) {
+            return List.of();
+        }
+        return defender.hand().cards().stream()
+                .filter(card -> isValidTransferCard(baseCard, card))
                 .toList();
     }
 
